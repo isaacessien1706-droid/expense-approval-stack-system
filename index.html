@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Corporate Expense Approval Stack | C++ LIFO Visualizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes slideInTop {
+      from { opacity: 0; transform: translateY(-28px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .stamp-card { animation: slideInTop 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-20">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <span class="text-xs font-mono uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2.5 py-1 rounded">
+          100% Pure LIFO Stack Application
+        </span>
+        <h1 class="text-xl sm:text-2xl font-bold mt-1">Corporate Expense Approval & Rejection Chain</h1>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="switchTab('sim')" id="tabSim" class="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white">
+          Interactive Stack Simulator
+        </button>
+        <button onclick="switchTab('cpp')" id="tabCpp" class="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">
+          C++ Code & Report Notes
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- TAB 1: INTERACTIVE SIMULATOR -->
+  <main id="viewSim" class="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Controls & Invoice Details -->
+    <section class="lg:col-span-5 space-y-5">
+      <!-- Invoice Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+          <div>
+            <p class="text-xs text-slate-400 uppercase tracking-wider">Active Expense Invoice</p>
+            <h2 class="text-lg font-bold text-white">INV-2026-089: Cloud Server Upgrade</h2>
+          </div>
+          <span class="text-lg font-mono font-bold text-emerald-400">$4,500.00</span>
+        </div>
+
+        <div class="space-y-3 text-sm">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Next Approver Name</label>
+            <input id="approverInput" type="text" value="Kwame (Employee)" 
+              class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Approval Stamp Note / Rejection Reason</label>
+            <input id="noteInput" type="text" value="Attached vendor quote & invoice" 
+              class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+
+        <!-- Pure Stack Action Buttons -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-5">
+          <button onclick="pushApproval()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-lg text-sm transition flex items-center justify-center gap-2">
+            <span>⬆ push() Sign-Off</span>
+          </button>
+          <button onclick="popRejection()" class="bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 px-4 rounded-lg text-sm transition flex items-center justify-center gap-2">
+            <span>⬇ pop() Reject 1 Level</span>
+          </button>
+          <button onclick="peekTop()" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-lg text-sm transition">
+            🔍 peek() Top Stamp
+          </button>
+          <button onclick="resetChain()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2 px-4 rounded-lg text-sm transition">
+            ↺ Reset Invoice
+          </button>
+        </div>
+      </div>
+
+      <!-- Stack Telemetry & Operation Log -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400">Stack State Telemetry</h3>
+          <span id="capacityBadge" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+            size(): 0 / 4
+          </span>
+        </div>
+        <div id="statusBanner" class="p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-400 mb-3">
+          Ready. Awaiting Level 1 Employee Submission (push).
+        </div>
+        <div id="opLog" class="h-44 overflow-y-auto space-y-1.5 text-xs font-mono bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Visual LIFO Stack Tower -->
+    <section class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+      <div>
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
+          <div>
+            <h2 class="text-lg font-bold">Approval Signature Stack (LIFO)</h2>
+            <p class="text-xs text-slate-400">Newest signature sits at <code class="text-emerald-400">TOP</code>. Rejections <code class="text-rose-400">pop()</code> only the topmost stamp.</p>
+          </div>
+          <span id="payoutStatus" class="text-xs font-semibold px-3 py-1 rounded-full bg-amber-950 text-amber-300 border border-amber-800">
+            ⏳ Pending 4 Approvals
+          </span>
+        </div>
+
+        <!-- Required Hierarchy Guide -->
+        <div class="grid grid-cols-4 gap-2 mb-5 text-center text-xs">
+          <div id="step1" class="p-2 rounded border border-slate-800 bg-slate-950 text-slate-400">1. Employee</div>
+          <div id="step2" class="p-2 rounded border border-slate-800 bg-slate-950 text-slate-400">2. Team Lead</div>
+          <div id="step3" class="p-2 rounded border border-slate-800 bg-slate-950 text-slate-400">3. Finance Mgr</div>
+          <div id="step4" class="p-2 rounded border border-slate-800 bg-slate-950 text-slate-400">4. Director</div>
+        </div>
+
+        <!-- Stack Container (Top-Down Visual) -->
+        <div id="stackTower" class="min-h-[300px] bg-slate-950 border-2 border-dashed border-slate-800 rounded-xl p-4 flex flex-col justify-end gap-2.5">
+        </div>
+      </div>
+
+      <div class="mt-4 text-center text-xs font-mono text-slate-500 border-t border-slate-800 pt-3">
+        ▲ STACK BOTTOM (Base of Invoice Hierarchy) ▲
+      </div>
+    </section>
+  </main>
+
+  <!-- TAB 2: C++ SOURCE & REPORT GUIDE -->
+  <section id="viewCpp" class="max-w-6xl mx-auto px-4 py-6 hidden space-y-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      <h2 class="text-xl font-bold text-emerald-400 mb-2">Why This Application Strictly Requires a Stack</h2>
+      <ul class="list-disc list-inside space-y-2 text-sm text-slate-300">
+        <li><strong>Hierarchical Escalation (<code class="text-emerald-400">push</code>):</strong> Each managerial sign-off builds directly on top of the previous level's verification.</li>
+        <li><strong>Single-Step Audit Rollback (<code class="text-rose-400">pop</code>):</strong> When an Executive Director queries an invoice, they don't revoke the Employee's original submission—they <code class="text-rose-400">pop()</code> the top stamp so it returns directly to the Finance Manager immediately beneath them.</li>
+        <li><strong>Encapsulated Integrity:</strong> No mid-level signature can be secretly deleted or altered while higher-level signatures sit above it.</li>
+      </ul>
+    </div>
+  </section>
+
+  <script>
+    // Pure LIFO Bounded Stack Class in JS (mirroring the C++ implementation)
+    class BoundedStack {
+      constructor(maxCapacity = 4) {
+        this.items = [];
+        this.maxCapacity = maxCapacity;
+      }
+      isEmpty() { return this.items.length === 0; }
+      isFull()  { return this.items.length >= this.maxCapacity; }
+      size()    { return this.items.length; }
+      push(item) {
+        if (this.isFull()) throw new Error("Stack Overflow");
+        this.items.push(item);
+      }
+      pop() {
+        if (this.isEmpty()) throw new Error("Stack Underflow");
+        return this.items.pop();
+      }
+      peek() {
+        if (this.isEmpty()) return null;
+        return this.items[this.items.length - 1];
+      }
+    }
+
+    const hierarchy = [
+      { level: 1, role: "1. Employee Submission", defaultPerson: "Kwame (Employee)", defaultNote: "Attached vendor quote & invoice" },
+      { level: 2, role: "2. Team Lead Sign-Off", defaultPerson: "Ama (Team Lead)", defaultNote: "Verified Q4 department budget" },
+      { level: 3, role: "3. Finance Manager Audit", defaultPerson: "Kofi (Finance Mgr)", defaultNote: "Tax compliance & VAT verified" },
+      { level: 4, role: "4. Executive Director Sign-Off", defaultPerson: "Esi (Exec Director)", defaultNote: "Final payout authorized" }
+    ];
+
+    const approvalStack = new BoundedStack(4);
+
+    function logOp(type, msg, colorClass = "text-slate-300") {
+      const log = document.getElementById("opLog");
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement("div");
+      entry.className = `${colorClass}`;
+      entry.innerHTML = `<span class="text-slate-600">[${time}]</span> <strong>${type}:</strong>${msg}`;
+      log.prepend(entry);
+    }
+
+    function setBanner(msg, color = "emerald") {
+      const banner = document.getElementById("statusBanner");
+      banner.className = `p-3 rounded-lg bg-slate-950 border border-${color}-800 text-xs font-mono text-${color}-400 mb-3`;
+      banner.textContent = msg;
+    }
+
+    function syncDefaultsForNextLevel() {
+      const idx = approvalStack.size();
+      if (idx < hierarchy.length) {
+        document.getElementById("approverInput").value = hierarchy[idx].defaultPerson;
+        document.getElementById("noteInput").value = hierarchy[idx].defaultNote;
+      }
+    }
+
+    function pushApproval() {
+      if (approvalStack.isFull()) {
+        setBanner("STACK OVERFLOW! All 4 hierarchy levels are already signed off.", "rose");
+        logOp("OVERFLOW", "Cannot push() — Invoice already has all 4 signatures.", "text-rose-400");
+        return;
+      }
+
+      const idx = approvalStack.size();
+      const person = document.getElementById("approverInput").value.trim() || hierarchy[idx].defaultPerson;
+      const note = document.getElementById("noteInput").value.trim() || hierarchy[idx].defaultNote;
+
+      const stamp = {
+        level: hierarchy[idx].level,
+        role: hierarchy[idx].role,
+        person,
+        note,
+        timestamp: new Date().toLocaleTimeString()
+      };
+
+      approvalStack.push(stamp);
+      setBanner(`PUSHED Level ${stamp.level}: ${stamp.role} signed by${stamp.person}`, "emerald");
+      logOp("PUSH()", `${stamp.role} stamped by${stamp.person}`, "text-emerald-400");
+
+      syncDefaultsForNextLevel();
+      renderStack();
+    }
+
+    function popRejection() {
+      if (approvalStack.isEmpty()) {
+        setBanner("STACK UNDERFLOW! Cannot pop() — Invoice has 0 signatures.", "rose");
+        logOp("UNDERFLOW", "Attempted pop() on an empty approval stack.", "text-rose-400");
+        return;
+      }
+
+      const reason = document.getElementById("noteInput").value.trim() || "Audit correction required";
+      const revoked = approvalStack.pop();
+
+      const nextHolder = approvalStack.isEmpty()
+        ? "Employee Draft (Unsigned)"
+        : `${approvalStack.peek().role} (${approvalStack.peek().person})`;
+
+      setBanner(`POPPED Level ${revoked.level} (${revoked.person}). Returned to: ${nextHolder}`, "rose");
+      logOp("POP()", `Revoked ${revoked.role} [Reason: "${reason}"]`, "text-rose-400");
+
+      syncDefaultsForNextLevel();
+      renderStack();
+    }
+
+    function peekTop() {
+      if (approvalStack.isEmpty()) {
+        setBanner("PEEK(): Stack is empty. No signatures on the invoice yet.", "amber");
+        logOp("PEEK()", "Stack is empty (nullptr).", "text-amber-400");
+        return;
+      }
+      const top = approvalStack.peek();
+      setBanner(`PEEK() TOP STAMP -> ${top.role} signed by ${top.person} ("${top.note}")`, "amber");
+      logOp("PEEK()", `Top of stack is Level ${top.level}: ${top.person}`, "text-amber-400"); }  function resetChain() { while (!approvalStack.isEmpty()) { approvalStack.pop(); } syncDefaultsForNextLevel(); setBanner("Reset complete. Stack is empty and ready for Level 1 submission.", "emerald"); logOp("CLEAR()", "Popped all stamps to reset invoice.", "text-slate-400"); renderStack(); }  function renderStack() { const tower = document.getElementById("stackTower"); tower.innerHTML = "";  document.getElementById("capacityBadge").textContent = `size(): ${approvalStack.size()} / 4`;
+
+      // Update progress steps
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById(`step${i}`); if (i <= approvalStack.size()) { el.className = "p-2 rounded border border-emerald-700 bg-emerald-950/60 text-emerald-300 font-semibold"; } else { el.className = "p-2 rounded border border-slate-800 bg-slate-950 text-slate-500"; } }  // Update payout badge const payout = document.getElementById("payoutStatus"); if (approvalStack.isFull()) { payout.className = "text-xs font-semibold px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700"; payout.textContent = "✅ Fully Approved — Payout Unlocked!"; } else { payout.className = "text-xs font-semibold px-3 py-1 rounded-full bg-amber-950 text-amber-300 border border-amber-800"; payout.textContent = `⏳ Pending (${4 - approvalStack.size()} more required)`;
+      }
+
+      if (approvalStack.isEmpty()) {
+        tower.innerHTML = `
+          <div class="my-auto text-center text-slate-500 py-12">
+            <p class="font-mono text-sm">[ APPROVAL STACK IS EMPTY ]</p>
+            <p class="text-xs mt-1">Click "push() Sign-Off" to add the first signature stamp.</p>
+          </div>`;
+        return;
+      }
+
+      // Pure Stack Traversal to render Top-Down (pop to tempStack, then restore)
+      const tempStack = new BoundedStack(4);
+      let isTop = true;
+
+      while (!approvalStack.isEmpty()) {
+        const s = approvalStack.pop();
+        tempStack.push(s);
+
+        const card = document.createElement("div");
+        card.className = `stamp-card p-3.5 rounded-lg border flex items-center justify-between gap-4 ${
+          isTop
+            ? "bg-emerald-950/40 border-emerald-600 shadow-lg shadow-emerald-950/50"
+            : "bg-slate-900 border-slate-800 opacity-85"
+        }`;
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono px-2 py-0.5 rounded ${
+                isTop ? "bg-emerald-600 text-white font-bold" : "bg-slate-800 text-slate-400"
+              }">
+                ${isTop ? "TOP (Active Stamp)" : `LOCKED (Level ${s.level})`}
+              </span>
+              <span class="font-bold text-sm text-white">${s.role}</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1">
+              Signed by: <strong class="text-emerald-300">${s.person}</strong> — <em>"${s.note}"</em>
+            </p>
+          </div>
+          <span class="text-xs font-mono text-slate-400 shrink-0">${s.timestamp}</span>
+        `;
+
+        tower.appendChild(card);
+        isTop = false;
+      }
+
+      // Restore back to approvalStack using pure push/pop
+      while (!tempStack.isEmpty()) {
+        approvalStack.push(tempStack.pop());
+      }
+    }
+
+    function switchTab(tab) {
+      const sim = document.getElementById("viewSim");
+      const cpp = document.getElementById("viewCpp");
+      const btnSim = document.getElementById("tabSim");
+      const btnCpp = document.getElementById("tabCpp");
+
+      if (tab === "sim") {
+        sim.classList.remove("hidden");
+        cpp.classList.add("hidden");
+        btnSim.className = "px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white";
+        btnCpp.className = "px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300";
+      } else {
+        sim.classList.add("hidden");
+        cpp.classList.remove("hidden");
+        btnCpp.className = "px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white";
+        btnSim.className = "px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300";
+      }
+    }
+
+    // Initialize with Level 1 & 2 pre-pushed so the stack is immediately visible
+    pushApproval();
+    pushApproval();
+  </script>
+</body>
+</html>
